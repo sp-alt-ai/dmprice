@@ -24,22 +24,36 @@ def _env_bool(name: str, default: bool = False) -> bool:
 SELF_MUTE = _env_bool("SELF_MUTE", False)
 SELF_DEAF = _env_bool("SELF_DEAF", False)
 
+def _require_env(name: str) -> str:
+  value = os.getenv(name)
+  if not value:
+    raise RuntimeError(f"Missing required environment variable: {name}")
+  return value
+
 usertoken = os.getenv("TOKEN")
 if not usertoken:
-  print("[ERROR] Please add a token inside Secrets.")
-  sys.exit()
+  if __name__ == "__main__":
+    print("[ERROR] Please add a token inside Secrets.")
+    sys.exit(1)
+  # Allow importing this module without configuring env vars.
+  usertoken = ""
 
-headers = {"Authorization": usertoken, "Content-Type": "application/json"}
+username = ""
+discriminator = ""
+userid = ""
 
-validate = requests.get("https://discord.com/api/v10/users/@me", headers=headers, timeout=20)
-if validate.status_code != 200:
-  print("[ERROR] Your token might be invalid. Please check it again.")
-  sys.exit()
+if usertoken:
+  headers = {"Authorization": usertoken, "Content-Type": "application/json"}
 
-userinfo = validate.json()
-username = userinfo["username"]
-discriminator = userinfo["discriminator"]
-userid = userinfo["id"]
+  validate = requests.get("https://discord.com/api/v10/users/@me", headers=headers, timeout=20)
+  if validate.status_code != 200:
+    print("[ERROR] Your token might be invalid. Please check it again.")
+    sys.exit(1)
+
+  userinfo = validate.json()
+  username = userinfo["username"]
+  discriminator = userinfo.get("discriminator", "0")
+  userid = userinfo["id"]
 
 def joiner(token, status):
     ws = websocket.WebSocket()
@@ -83,5 +97,6 @@ def run_joiner():
     joiner(usertoken, status)
     time.sleep(30)
 
-keep_alive()
-run_joiner()
+if __name__ == "__main__":
+  keep_alive()
+  run_joiner()
